@@ -22,7 +22,8 @@ my %o = TestTracker::parse_args(
     'lsf-tail'        => 'lsf-tail',
     'lsf-interactive' => 'lsf|l',
     'jobs'            => 'jobs|j=i',
-    'iterate'         => 'iterate|i'
+    'iterate'         => 'iterate|i',
+    'cover'           => 'cover|c',
 );
 
 my $lsf = ($o{'lsf-interactive' || $o{'lsf-redirect'}} || $o{'lsf-tail'});
@@ -46,9 +47,21 @@ if ($o{jobs}) {
 if ($o{'lsf-redirect'} || $o{'lsf-tail'}) {
     setup_log_directory();
 }
-
+if ($o{'cover'}) {
+    unless ($o{'lsf-interactive'}) {
+        die "-cover option currently only supported with -lsf option";
+    }
+    unless ($ENV{TT_COVER_OUTPUT_DIR} and -e $ENV{TT_COVER_OUTPUT_DIR}) {
+        die "TT_COVER_OUTPUT_DIR must be set when using -cover option";
+    }
+}
 if ($o{'lsf-interactive'}) {
-    unshift @ARGV, '--exec', 'test-tracker-exec-lsf-interactive';
+    if ($o{'cover'}) {
+        unshift @ARGV, '--exec', 'test-tracker-exec-lsf-interactive-coverage';
+    }
+    else {
+        unshift @ARGV, '--exec', 'test-tracker-exec-lsf-interactive';
+    }
 }
 
 if ($o{'lsf-tail'}) {
@@ -88,7 +101,11 @@ if ($o{iterate}) {
         push @ARGV, @tests;
     }
 
-    exec 'prove', @ARGV;
+    system 'prove', @ARGV;
+
+    if ($o{cover}) {
+        system 'cover -outputdir '.$ENV{TT_COVER_OUTPUT_DIR}.'/cover_merged '.$ENV{TT_COVER_OUTPUT_DIR}.'/*';
+    }
 }
 
 # Users want to see progress happening as fast as possible, which means running short tests first.
@@ -245,6 +262,7 @@ __END__
        --lsf                                bsub test(s) to your LSF cluster
        --git [<since>..<until>]             determine test(s) to run from Git changes
        --junit                              enable JUnit output
+       --cover                              run with Devel::Cover
        --help                               brief help message
        --man                                full documentation
 
