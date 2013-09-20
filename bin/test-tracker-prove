@@ -101,10 +101,25 @@ if ($o{iterate}) {
         push @ARGV, @tests;
     }
 
-    system 'prove', @ARGV;
-
     if ($o{cover}) {
-        system 'cover -outputdir '.$ENV{TT_COVER_OUTPUT_DIR}.'/cover_merged '.$ENV{TT_COVER_OUTPUT_DIR}.'/*';
+        eval{
+            system 'prove', @ARGV;
+        };
+        my $merged_dir = $ENV{TT_COVER_OUTPUT_DIR}."_cover_merged";
+        my $html_dir = $merged_dir."_html";
+        `mkdir $html_dir`;
+        `mkdir -p $merged_dir/structure`;
+        my $link_cmd = "find ".$ENV{TT_COVER_OUTPUT_DIR}." -maxdepth 1 -mindepth 1 | xargs -n1 -i find {}/structure -mindepth 1 | xargs -n1 -i ln -s -f {} $merged_dir/structure";
+        `$link_cmd`;
+        my @ignore_res;
+        if ($ENV{TT_COVER_IGNORE_LIST}) {
+            @ignore_res = split(":", $ENV{TT_COVER_IGNORE_LIST});
+        }
+        my $ignore_string = join(" ", map{"+ignore_re ".$_} @ignore_res);
+        system "cover $ignore_string -report html -outputdir $html_dir -write $merged_dir $merged_dir ".$ENV{TT_COVER_OUTPUT_DIR}.'/*';
+    }
+    else {
+        system 'prove', @ARGV;
     }
 }
 
