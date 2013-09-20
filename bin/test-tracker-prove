@@ -49,7 +49,7 @@ if ($o{'lsf-redirect'} || $o{'lsf-tail'}) {
 }
 if ($o{'cover'}) {
     unless ($o{'lsf-interactive'}) {
-        die "-cover option currently only supported with -lsf option";
+        die "--cover option currently only supported with --lsf option";
     }
     unless ($ENV{TT_COVER_OUTPUT_DIR} and -d $ENV{TT_COVER_OUTPUT_DIR}) {
         die "TT_COVER_OUTPUT_DIR must be set when using -cover option";
