@@ -8,10 +8,8 @@ sub main {
     my ($exec, $test_name) = @_;
     my $db_name = test_name_to_cover_db_name($test_name);
     my $options = "-MDevel::Cover=-db,$db_name";
-    my $old_perl5opt = $ENV{PERL5OPT};
-    $ENV{PERL5OPT} = $options;
+    local $ENV{PERL5OPT} = $options;
     my $rv = TestTracker::InteractiveExecutor::main($exec, $test_name);
-    $ENV{PERL5OPT} = $old_perl5opt;
     return $rv;
 }
 
