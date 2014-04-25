@@ -22,7 +22,8 @@ my %o = TestTracker::parse_args(
     'lsf-tail'        => 'lsf-tail',
     'lsf-interactive' => 'lsf|l',
     'jobs'            => 'jobs|j=i',
-    'iterate'         => 'iterate|i'
+    'iterate'         => 'iterate|i',
+    'cover'           => 'cover|c',
 );
 
 my $lsf = ($o{'lsf-interactive' || $o{'lsf-redirect'}} || $o{'lsf-tail'});
@@ -46,9 +47,21 @@ if ($o{jobs}) {
 if ($o{'lsf-redirect'} || $o{'lsf-tail'}) {
     setup_log_directory();
 }
-
+if ($o{'cover'}) {
+    unless ($o{'lsf-interactive'}) {
+        die "--cover option currently only supported with --lsf option";
+    }
+    unless ($ENV{TT_COVER_OUTPUT_DIR} and -d $ENV{TT_COVER_OUTPUT_DIR}) {
+        die "TT_COVER_OUTPUT_DIR must be set when using -cover option";
+    }
+}
 if ($o{'lsf-interactive'}) {
-    unshift @ARGV, '--exec', 'test-tracker-exec-lsf-interactive';
+    if ($o{'cover'}) {
+        unshift @ARGV, '--exec', 'test-tracker-exec-lsf-interactive-coverage';
+    }
+    else {
+        unshift @ARGV, '--exec', 'test-tracker-exec-lsf-interactive';
+    }
 }
 
 if ($o{'lsf-tail'}) {
@@ -88,7 +101,26 @@ if ($o{iterate}) {
         push @ARGV, @tests;
     }
 
-    exec 'prove', @ARGV;
+    if ($o{cover}) {
+        eval{
+            system 'prove', @ARGV;
+        };
+        my $merged_dir = $ENV{TT_COVER_OUTPUT_DIR}."_cover_merged";
+        my $html_dir = $merged_dir."_html";
+        `mkdir $html_dir`;
+        `mkdir -p $merged_dir/structure`;
+        my $link_cmd = "find ".$ENV{TT_COVER_OUTPUT_DIR}." -maxdepth 1 -mindepth 1 | xargs -n1 -i find {}/structure -mindepth 1 | xargs -n1 -i ln -s -f {} $merged_dir/structure";
+        `$link_cmd`;
+        my @ignore_res;
+        if ($ENV{TT_COVER_IGNORE_LIST}) {
+            @ignore_res = split(":", $ENV{TT_COVER_IGNORE_LIST});
+        }
+        my $ignore_string = join(" ", map{"+ignore_re ".$_} @ignore_res);
+        system "cover $ignore_string -report html -outputdir $html_dir -write $merged_dir $merged_dir ".$ENV{TT_COVER_OUTPUT_DIR}.'/*';
+    }
+    else {
+        system 'prove', @ARGV;
+    }
 }
 
 # Users want to see progress happening as fast as possible, which means running short tests first.
@@ -246,6 +278,7 @@ __END__
        --lsf                                bsub test(s) to your LSF cluster
        --git [<since>..<until>]             determine test(s) to run from Git changes
        --junit                              enable JUnit output
+       --cover                              run with Devel::Cover
        --help                               brief help message
        --man                                full documentation
 
