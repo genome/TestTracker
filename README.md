@@ -1,7 +1,7 @@
 TestTracker
 ===========
 
-Track Perl module and test relationships so you can guess what are the best tests to run.
+Track Perl module and test relationships so you can run only the tests you need to.
 
 Building the Ubuntu Lucid Package
 =================================
