@@ -6,6 +6,10 @@ use warnings;
 use IPC::Open3;
 use Symbol qw(gensym);
 
+my $RUN_COUNT_LIMIT = 3;
+my $RERUN_WAIT = 10;
+my $run_count = 0;
+
 sub main {
     my ($exec, $test_name) = @_;
 
@@ -32,7 +36,17 @@ sub main {
         print STDERR @stderr;
         print STDERR '*' x (length($test_name) + 19), "\n";
         print STDERR "\n";
+
+        my $stderr = join("\n", @stderr);
+        if ($stderr =~ m/Failed in an LSF library call: LIM is down; try later\. Job not submitted\./) {
+            $run_count++;
+            sleep($RERUN_WAIT);
+            if ($run_count < $RUN_COUNT_LIMIT) {
+                main(@_);
+            }
+        }
     }
+
 }
 
 1;
